@@ -1,11 +1,18 @@
+from typing import Sequence, Text
 import pygame
 import pygame_gui
 #import RPi.GPIO as GPIO
 import os
 import sys
 from subprocess import Popen
+from mfrc522 import SimpleMFRC522
+
 
 #literally just set every thing up {
+
+reader = SimpleMFRC522()
+
+
 pygame.init()
 
 pygame.display.set_caption('Quick Start')
@@ -16,19 +23,31 @@ background.fill(pygame.Color('#000000'))
 
 manager = pygame_gui.UIManager((800, 600))
 
-button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((350, 275), (100, 50)),
-                                             text='Input',
-                                             manager=manager)
-
 text = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((5, 10), (790, 35)),
-                                            html_text='Insert Coordinates',
+                                            html_text='Out Of Order :( Fix Me',
                                             manager=manager)
 
 clock = pygame.time.Clock()
 input_coordinates = True
 theme = ("/Users/s1034274/Desktop/SASA.Comms.Urgent.mp4")
+
 inputArray = []
-running = True
+correctSequence = ['R', 'G', 'B', 'Y']
+notLaunched = True
+fixed = False
+correctInput = False
+coordinates = False
+
+GPIO.setwarnings(False) # Ignore warning for now
+GPIO.setmode(GPIO.BOARD) # Use physical pin numbering
+GPIO.setup(10, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # Set pin 10 to be an input pin and set initial value to be pulled low (off)
+GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # Set pin 11 to be an input pin and set initial value to be pulled low (off)
+GPIO.setup(12, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # Set pin 12 to be an input pin and set initial value to be pulled low (off)
+GPIO.setup(13, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # Set pin 13 to be an input pin and set initial value to be pulled low (off)
+GPIO.setup(14, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # Set pin 14 to be an input pin and set initial value to be pulled low (off)
+GPIO.setup(15, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # Set pin 15 to be an input pin and set initial value to be pulled low (off)
+GPIO.setup(16, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # Set pin 16 to be an input pin and set initial value to be pulled low (off)
+
 
 # } end set up
 
@@ -37,51 +56,63 @@ running = True
 # set up variables
 # Easy reset loop
 # Check for input
-#     if not "WhiteButton" or "fixedPanel":
+#      if "white" button pressed and fixed pannel and coordinates entered
 #          compare input array to codes
+#          if inputArray == correct sequence
+#              display launch
+#              wait for all launch buttons pressed
+#                  launch
 #
-#
+#      if fixed pannel
+#           display 'input coordinates'
+#           wait till RFID scan
+#               display heading to "sumwhere"
+# 
 #     else:
 #         add to inputArray
 # 
 # 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
 
-while running:
-    inputArray = []
+def addInput(button):
+    global inputArray, fixed, coordinates, correctInput, text, notLaunched
+    if (button == "f"):
+        fixed = True
+    if (button != "w") and fixed:
+        inputArray.insert(button)
+    if (button == "w") and fixed:
+        try:
+            id, text = reader.read()
+            coordinates = True
+            print(id)
+            print(text)
+        except:
+            print("error")
+            GPIO.cleanup()
+        if (inputArray == correctSequence):
+            inputArray = []
+            correctInput = True
+        else:
+            inputArray = []
+    if (button == "l") and correctInput and coordinates and fixed:
+        # play vid
+        os.system("echo 'playing vid'")
+        notLaunched = False
 
+    print(inputArray)
 
-while True:
-    #Read states of inputs
-    #input_state1 = GPIO.input(17)
-    #input_state2 = GPIO.input(18)
-    #quite_video = GPIO.input(24)
+GPIO.add_event_detect(10,GPIO.RISING,callback=addInput("f"),) # Setup event on pin 10 rising edge
+GPIO.add_event_detect(11,GPIO.RISING,callback=addInput("w"),) # Setup event on pin 10 rising edge
+GPIO.add_event_detect(12,GPIO.RISING,callback=addInput("r"),) # Setup event on pin 10 rising edge
+GPIO.add_event_detect(13,GPIO.RISING,callback=addInput("y"),) # Setup event on pin 10 rising edge
+GPIO.add_event_detect(14,GPIO.RISING,callback=addInput("g"),) # Setup event on pin 10 rising edge
+GPIO.add_event_detect(15,GPIO.RISING,callback=addInput("b"),) # Setup event on pin 10 rising edge
+GPIO.add_event_detect(16,GPIO.RISING,callback=addInput("l"),) # Setup event on pin 10 rising edge
 
-    #If GPIO(17) is shorted to ground
-    #if input_state1 != last_state1:
-    if (input()==1):
-        omxc = Popen(['omxplayer', '-b', theme])
-    else:
-    #If omxplayer is running and GPIO(17) and GPIO(18) are NOT shorted to ground
-        os.system('killall omxplayer.bin')
-
-
-while input_coordinates:
+while notLaunched:
     time_delta = clock.tick(60)/1000.0
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            input_coordinates = False
-
-        if event.type == pygame.USEREVENT:
-            if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
-                if event.ui_element == button:
-                    input_coordinates = False
+            notLaunched = False
 
         manager.process_events(event)
 
@@ -92,80 +123,20 @@ while input_coordinates:
 
     pygame.display.update()
 
-text = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((5, 10), (790, 35)),
-                                            html_text='Input Launch Code',
-                                            manager=manager)
+#figuring out how to play video, i can do audio but not video
 
-input_code = True
+# while True:
+#     #Read states of inputs
+#     #input_state1 = GPIO.input(17)
+#     #input_state2 = GPIO.input(18)
+#     #quite_video = GPIO.input(24)
 
-while input_code:
-    time_delta = clock.tick(60)/1000.0
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            input_code = False
+#     #If GPIO(17) is shorted to ground
+#     #if input_state1 != last_state1:
+#     if (input()==1):
+#         omxc = Popen(['omxplayer', '-b', theme])
+#     else:
+#     #If omxplayer is running and GPIO(17) and GPIO(18) are NOT shorted to ground
+#         os.system('killall omxplayer.bin')
 
-        if event.type == pygame.USEREVENT:
-            if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
-                if event.ui_element == button:
-                    input_code = False
-
-        manager.process_events(event)
-
-    manager.update(time_delta)
-
-    screen.blit(background, (0, 0))
-    manager.draw_ui(screen)
-
-    pygame.display.update()
-
-text = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((5, 10), (790, 35)),
-                                            html_text='Ready To Launch',
-                                            manager=manager)
-
-launch = True
-
-while launch:
-    time_delta = clock.tick(60)/1000.0
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            launch = False
-
-        if event.type == pygame.USEREVENT:
-            if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
-                if event.ui_element == button:
-                    launch = False
-
-        manager.process_events(event)
-
-    manager.update(time_delta)
-
-    screen.blit(background, (0, 0))
-    manager.draw_ui(screen)
-
-    pygame.display.update()
-
-text = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((5, 10), (790, 35)),
-                                            html_text='Launching...',
-                                            manager=manager)
-
-launching = True
-
-while launching:
-    time_delta = clock.tick(60)/1000.0
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            launching = False
-
-        if event.type == pygame.USEREVENT:
-            if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
-                if event.ui_element == button:
-                    launching = False
-
-        manager.process_events(event)
-
-    manager.update(time_delta)
-
-    screen.blit(background, (0, 0))
-    manager.draw_ui(screen)
-
-    pygame.display.update()
+GPIO.cleanup()
