@@ -1,11 +1,15 @@
-from typing import Sequence, Text
-import pygame
-import pygame_gui
-#import RPi.GPIO as GPIO
+#from typing import Sequence, Text
+#import pygame
+#import pygame_gui
+import RPi.GPIO as GPIO
 import os
 import sys
 from subprocess import Popen
+import time
 from mfrc522 import SimpleMFRC522
+from gpiozero import Button
+
+fixButton = Button(17)
 
 
 #literally just set every thing up {
@@ -13,42 +17,30 @@ from mfrc522 import SimpleMFRC522
 reader = SimpleMFRC522()
 
 
-pygame.init()
+#pygame.init()
 
-pygame.display.set_caption('Quick Start')
-screen = pygame.display.set_mode((800, 600))
+#pygame.display.set_caption('Quick Start')
+#screen = pygame.display.set_mode((800, 600))
 
-background = pygame.Surface((800, 600))
-background.fill(pygame.Color('#000000'))
+#background = pygame.Surface((800, 600))
+#background.fill(pygame.Color('#000000'))
 
-manager = pygame_gui.UIManager((800, 600))
+#manager = pygame_gui.UIManager((800, 600))
 
-text = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((5, 10), (790, 35)),
-                                            html_text='Out Of Order :( Fix Me',
-                                            manager=manager)
+#text = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((5, 10), (790, 35)),
+#                                            html_text='Out Of Order :( Fix Me',
+#                                            manager=manager)
 
-clock = pygame.time.Clock()
+#clock = pygame.time.Clock()
 input_coordinates = True
-theme = ("/Users/s1034274/Desktop/SASA.Comms.Urgent.mp4")
+
 
 inputArray = []
-correctSequence = ['R', 'G', 'B', 'Y']
+correctSequence = ['r', 'g', 'b', 'y', 'y', 'r']
 notLaunched = True
 fixed = False
 correctInput = False
 coordinates = False
-
-GPIO.setwarnings(False) # Ignore warning for now
-GPIO.setmode(GPIO.BOARD) # Use physical pin numbering
-GPIO.setup(10, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # Set pin 10 to be an input pin and set initial value to be pulled low (off)
-GPIO.setup(11, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # Set pin 11 to be an input pin and set initial value to be pulled low (off)
-GPIO.setup(12, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # Set pin 12 to be an input pin and set initial value to be pulled low (off)
-GPIO.setup(13, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # Set pin 13 to be an input pin and set initial value to be pulled low (off)
-GPIO.setup(14, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # Set pin 14 to be an input pin and set initial value to be pulled low (off)
-GPIO.setup(15, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # Set pin 15 to be an input pin and set initial value to be pulled low (off)
-GPIO.setup(16, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # Set pin 16 to be an input pin and set initial value to be pulled low (off)
-
-
 # } end set up
 
 # psuedo code
@@ -73,55 +65,58 @@ GPIO.setup(16, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # Set pin 16 to be an input 
 # 
 # 
 
+def goodCode():
+    global inputArray, fixed, coordinates, correctInput, text, notLaunched
+    i = 0
+    while i < len(correctInput):
+        if (correctInput[i]!=inputArray[i]):
+            return False
+    return True
+
 def addInput(button):
     global inputArray, fixed, coordinates, correctInput, text, notLaunched
+    print(button)
+    print(inputArray)
     if (button == "f"):
         fixed = True
-    if (button != "w") and fixed:
-        inputArray.insert(button)
-    if (button == "w") and fixed:
-        try:
-            id, text = reader.read()
-            coordinates = True
-            print(id)
-            print(text)
-        except:
-            print("error")
-            GPIO.cleanup()
-        if (inputArray == correctSequence):
+    elif (button != "w") and fixed:
+        inputArray.insert((len(inputArray)-1), button)
+    elif (button == "w"):
+        if (goodCode()):
             inputArray = []
             correctInput = True
         else:
             inputArray = []
-    if (button == "l") and correctInput and coordinates and fixed:
+    elif (button == "l") and correctInput and coordinates and fixed:
         # play vid
         os.system("echo 'playing vid'")
         notLaunched = False
 
     print(inputArray)
 
-GPIO.add_event_detect(10,GPIO.RISING,callback=addInput("f"),) # Setup event on pin 10 rising edge
-GPIO.add_event_detect(11,GPIO.RISING,callback=addInput("w"),) # Setup event on pin 10 rising edge
-GPIO.add_event_detect(12,GPIO.RISING,callback=addInput("r"),) # Setup event on pin 10 rising edge
-GPIO.add_event_detect(13,GPIO.RISING,callback=addInput("y"),) # Setup event on pin 10 rising edge
-GPIO.add_event_detect(14,GPIO.RISING,callback=addInput("g"),) # Setup event on pin 10 rising edge
-GPIO.add_event_detect(15,GPIO.RISING,callback=addInput("b"),) # Setup event on pin 10 rising edge
-GPIO.add_event_detect(16,GPIO.RISING,callback=addInput("l"),) # Setup event on pin 10 rising edge
-
+print("Started")
 while notLaunched:
-    time_delta = clock.tick(60)/1000.0
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            notLaunched = False
-
-        manager.process_events(event)
-
-    manager.update(time_delta)
-
-    screen.blit(background, (0, 0))
-    manager.draw_ui(screen)
-
-    pygame.display.update()
+    print("Fix Panel")
+    while not fixed:
+        time.sleep(0.1)
+        if fixButton.is_pressed:
+            addInput("f")
+    print("Fixed. Gimme coordinates")
+    try:
+        id, text = reader.read()
+        coordinates = True
+        print(id)
+        print(text)
+    except:
+        print("error")
+        GPIO.cleanup()
+    print("Got 'em. Gimme Code")
+    while not correctInput:
+        time.sleep(0.01)
+    print("Got it. Launch it now")
+    
+print("LAUNCHED")
+    
 
 #figuring out how to play video, i can do audio but not video
 
