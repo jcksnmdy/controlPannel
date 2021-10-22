@@ -1,5 +1,6 @@
 #from typing import Sequence, Text
-#import pygame
+import pygame
+#from pygame import mixer
 #import pygame_gui
 import RPi.GPIO as GPIO
 import os
@@ -8,14 +9,29 @@ from subprocess import Popen
 import time
 from mfrc522 import SimpleMFRC522
 from gpiozero import Button
+from playsound import playsound
 
-fixButton = Button(17)
+pygame.init()
 
+
+
+
+fixButton = Button(2)
+redButton = Button(3)
+blueButton = Button(17)
+yellowButton = Button(4)
+greenButton = Button(14)
+whiteButton = Button(27)
+launchButton = Button(16)
+while not whiteButton.is_pressed:
+    time.sleep(0.01)
+start = time.time()
 
 #literally just set every thing up {
 
 reader = SimpleMFRC522()
 
+os.system("clear")
 
 #pygame.init()
 
@@ -36,7 +52,7 @@ input_coordinates = True
 
 
 inputArray = []
-correctSequence = ['r', 'g', 'b', 'y', 'y', 'r']
+correctSequence = ['r', 'g', 'b', 'y', 'y']
 notLaunched = True
 fixed = False
 correctInput = False
@@ -68,19 +84,28 @@ coordinates = False
 def goodCode():
     global inputArray, fixed, coordinates, correctInput, text, notLaunched
     i = 0
-    while i < len(correctInput):
-        if (correctInput[i]!=inputArray[i]):
+    if (len(correctSequence) != len(inputArray)):
+        print("This code is invalid! Try agan...")
+        return False
+    while ((i < len(correctSequence)) and (i < len(inputArray))):
+        print("Checking: " + str(i))
+        if (correctSequence[i]!=inputArray[i]):
+            print("This code is invalid! Try agan...")
             return False
+        i += 1
+    print("Accepted.")
+    print("Initiating Launch Sequence..")
+    print("Prepare to launch...")
     return True
 
 def addInput(button):
     global inputArray, fixed, coordinates, correctInput, text, notLaunched
-    print(button)
-    print(inputArray)
+    #print(button)
+    #print(inputArray)
     if (button == "f"):
         fixed = True
     elif (button != "w") and fixed:
-        inputArray.insert((len(inputArray)-1), button)
+        inputArray.insert((len(inputArray)), button)
     elif (button == "w"):
         if (goodCode()):
             inputArray = []
@@ -92,28 +117,55 @@ def addInput(button):
         os.system("echo 'playing vid'")
         notLaunched = False
 
-    print(inputArray)
+    #print(inputArray)
 
-print("Started")
+print("Welcome To S.A.S.A.")
+print("Unexpected error: ERROR 404 POWER NOT FOUND. FIX IMMEDIATELY")
 while notLaunched:
-    print("Fix Panel")
+    #print("Fix Panel")
     while not fixed:
         time.sleep(0.1)
         if fixButton.is_pressed:
             addInput("f")
-    print("Fixed. Gimme coordinates")
+    print("POWER RESTORED")
+    #audio
+    print("Input coordinates")
     try:
         id, text = reader.read()
         coordinates = True
-        print(id)
-        print(text)
+        print("Accepted. Setting destination: MOON")
+        time.sleep(2)
+        print("Input Launch Code")
     except:
-        print("error")
+        print("error. CONTACT GAMEHOST")
         GPIO.cleanup()
-    print("Got 'em. Gimme Code")
     while not correctInput:
         time.sleep(0.01)
-    print("Got it. Launch it now")
+        if redButton.is_pressed:
+            addInput("r")
+            time.sleep(0.23)
+            print("R")
+        elif greenButton.is_pressed:
+            addInput("g")
+            time.sleep(0.3)
+            print("G")
+        elif blueButton.is_pressed:
+            addInput("b")
+            time.sleep(0.23)
+            print("B")
+        elif yellowButton.is_pressed:
+            addInput("y")
+            time.sleep(0.3)
+            print("Y")
+        if whiteButton.is_pressed:
+            addInput("w")
+            time.sleep(0.2)
+    while not launchButton.is_pressed:
+        time.sleep(0.01)
+    #os.system("cvlc 'noiseLaunch.wav'")
+    end = time.time()
+    print(end-start)
+    notLaunched = False
     
 print("LAUNCHED")
     
@@ -134,4 +186,4 @@ print("LAUNCHED")
 #     #If omxplayer is running and GPIO(17) and GPIO(18) are NOT shorted to ground
 #         os.system('killall omxplayer.bin')
 
-GPIO.cleanup()
+#GPIO.cleanup()
